@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique
+  description String?
+  users       User[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique
+  description String?
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       Int
+  permissionId Int
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+model User {
+  id         Int       @id @default(autoincrement())
+  name       String?
+  email      String?   @unique
+  phone      String?   @unique
+  password   String
+  roleId     Int
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  role       Role      @relation(fields: [roleId], references: [id])
+  shops      Shop[]
+  ratings    Rating[]
+  orders     Order[]
+  messages   Message[]
+}
+
+model Shop {
+  id             Int       @id @default(autoincrement())
+  userId         Int
+  name           String
+  description    String?
+  phone          String?
+  whatsappNumber String?
+  address        String?
+  locationId     Int
+  googleMapsUrl  String?
+  bannerUrl      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  owner      User       @relation(fields: [userId], references: [id])
+  location   Location   @relation(fields: [locationId], references: [id])
+  license    License?
+  products   Product[]
+  ratings    Rating[]
+  promotions Promotion[]
+  views      View[]
+  payments   Payment[]
+  messages   Message[]
+}
+
+model License {
+  id            Int      @id @default(autoincrement())
+  shopId        Int      @unique
+  licenseNumber String
+  issuedDate    DateTime
+  expiryDate    DateTime
+  status        String   // 'active', 'expired'
+
+  shop          Shop     @relation(fields: [shopId], references: [id])
+}
+
+model Location {
+  id        Int      @id @default(autoincrement())
+  city      String
+  region    String
+  latitude  Float
+  longitude Float
+
+  shops     Shop[]
+
+ 
+}
+
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  products Product[]
+}
+
+model Product {
+  id          Int       @id @default(autoincrement())
+  shopId      Int
+  categoryId  Int
+  title       String
+  description String?
+  price       Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  shop        Shop      @relation(fields: [shopId], references: [id])
+  category    Category  @relation(fields: [categoryId], references: [id])
+  images      ProductImage[]
+  ratings     Rating[]
+  promotions  Promotion[]
+  views       View[]
+  orders      OrderItem[]
+}
+
+model ProductImage {
+  id         Int      @id @default(autoincrement())
+  productId  Int
+  imageUrl   String
+  isPrimary  Boolean  @default(false)
+  position   Int
+  uploadedAt DateTime @default(now())
+
+  product    Product  @relation(fields: [productId], references: [id])
+}
+
+model Rating {
+  id        Int       @id @default(autoincrement())
+  value     Int       // 1–5 stars
+  review    String?
+  userId    Int
+  productId Int?
+  shopId    Int?
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  product   Product?  @relation(fields: [productId], references: [id])
+  shop      Shop?     @relation(fields: [shopId], references: [id])
+
+  @@unique([userId, productId])
+  @@unique([userId, shopId])
+}
+
+model Promotion {
+  id          Int       @id @default(autoincrement())
+  shopId      Int
+  productId   Int?
+  promoType   String    // 'featured_product', 'shop_spotlight'
+  startDate   DateTime
+  endDate     DateTime
+  price       Float
+  createdAt   DateTime  @default(now())
+
+  shop        Shop      @relation(fields: [shopId], references: [id])
+  product     Product?  @relation(fields: [productId], references: [id])
+}
+
+model View {
+  id         Int      @id @default(autoincrement())
+  entityType String   // 'shop', 'product'
+  shopId     Int?
+  productId  Int?
+  viewedAt   DateTime @default(now())
+  ipAddress  String
+
+  shop       Shop?    @relation(fields: [shopId], references: [id])
+  product    Product? @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id             Int      @id @default(autoincrement())
+  shopId         Int
+  amount         Float
+  currency       String   // 'ETB', 'USD'
+  paymentMethod  String   // 'Chapa', 'PayPal', etc.
+  transactionId  String
+  status         String   // 'pending', 'completed', 'failed'
+  paidAt         DateTime
+
+  shop           Shop     @relation(fields: [shopId], references: [id])
+}
+
+model Order {
+  id        Int         @id @default(autoincrement())
+  userId    Int
+  total     Float
+  createdAt DateTime    @default(now())
+
+  user      User        @relation(fields: [userId], references: [id])
+  items     OrderItem[]
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  quantity  Int
+
+  order     Order    @relation(fields: [orderId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+model Message {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  shopId     Int
+  content    String
+  sentAt     DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id])
+  shop       Shop     @relation(fields: [shopId], references: [id])
+}
