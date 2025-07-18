@@ -92,10 +92,7 @@ model Location {
   longitude Float
 
   shops     Shop[]
-
- 
 }
-
 
 model Category {
   id       Int       @id @default(autoincrement())
@@ -218,4 +215,18 @@ model Message {
 
   user       User     @relation(fields: [userId], references: [id])
   shop       Shop     @relation(fields: [shopId], references: [id])
+}
+
+//
+// ✅ NEW MODEL: For OTP phone verification
+//
+model OtpCode {
+  id        Int      @id @default(autoincrement())
+  phone     String
+  code      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone])
 }

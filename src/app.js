@@ -10,14 +10,14 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Security & parsing
+//Security & parsing
 app.use(cors());
 app.use(express.json());
 
-// ✅ Register routes
+//auth routes
 app.use("/api/auth", authRoutes);
 
-// ✅ Global error handler
+//Global error handler
 app.use(errorHandler);
 
 export default app;
