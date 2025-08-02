@@ -27,25 +27,57 @@ async function main() {
     },
   };
 
+  // 2. Prepare permission data WITHOUT manually setting UUIDs
   const permissionList = [
-    { name: "manage_users", description: "Admin can manage all users" },
-    { name: "manage_shops", description: "Admin can manage shops" },
-    { name: "add_product", description: "Shop owner can add products" },
-    { name: "view_analytics", description: "Shop owner can view insights" },
+    { name: "manage_users", description: "Can manage users" },
+    { name: "manage_shops", description: "Can manage shops" },
+    { name: "add_product", description: "Can add products" },
+    { name: "view_analytics", description: "Can view analytics" },
+    { name: "CREATE_SHOP", description: "Can create a new shop" },
+    { name: "EDIT_SHOP", description: "Can edit existing shop" },
+    { name: "DELETE_SHOP", description: "Can delete a shop" },
+    { name: "VIEW_USERS", description: "Can view users" },
+    { name: "MANAGE_PRODUCTS", description: "Can add/edit/delete products" },
+    {
+      name: "MANAGE_RATINGS",
+      description: "Can view or remove inappropriate ratings",
+    },
   ];
 
   // 2. Seed Permissions
-  await prisma.permission.createMany({
-    data: permissionList,
-    skipDuplicates: true,
-  });
+  for (const permission of permissionList) {
+    await prisma.permission.upsert({
+      where: { name: permission.name },
+      update: {},
+      create: permission,
+    });
+  }
 
+  // 3. Fetch all permissions (to get their IDs)
   const allPermissions = await prisma.permission.findMany();
   const permissionMap = Object.fromEntries(
     allPermissions.map((p) => [p.name, p.id])
   );
 
-  // 3. Seed Roles
+  // 4. Create ADMIN role (if not exists)
+  const adminRole = await prisma.role.upsert({
+    where: { name: "ADMIN" },
+    update: {},
+    create: {
+      name: "ADMIN",
+      description: "System administrator",
+    },
+  });
+
+  // 5. Assign all permissions to ADMIN role
+  await prisma.rolePermission.createMany({
+    data: Object.values(permissionMap).map((permissionId) => ({
+      roleId: adminRole.id,
+      permissionId,
+    })),
+    skipDuplicates: true, // prevent duplicate entries
+  });
+  // 5. Seed Roles + Permissions
   const roles = {};
   for (const [roleName, roleData] of Object.entries(roleTemplates)) {
     const role = await prisma.role.upsert({
@@ -58,7 +90,6 @@ async function main() {
     });
     roles[roleName] = role;
 
-    // 4. Link Permissions to Role
     const rolePerms = roleData.permissions.map((permName) => ({
       roleId: role.id,
       permissionId: permissionMap[permName],
@@ -72,7 +103,7 @@ async function main() {
     }
   }
 
-  // 5. Create Admin User
+  // 6. Create Admin User
   const hashedPassword = await bcrypt.hash("admin123", 10);
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@bazarit.com" },
@@ -85,10 +116,11 @@ async function main() {
     },
   });
 
-  // 6. Find or Create Location (city + region not unique)
+  // 7. Ensure Location
   let addis = await prisma.location.findFirst({
     where: { city: "Addis Ababa", region: "Addis Ababa" },
   });
+
   if (!addis) {
     addis = await prisma.location.create({
       data: {
@@ -100,14 +132,14 @@ async function main() {
     });
   }
 
-  // 7. Create Category
+  // 8. Ensure Category
   const electronics = await prisma.category.upsert({
     where: { name: "Electronics" },
     update: {},
     create: { name: "Electronics" },
   });
 
-  // 8. Create Shop
+  // 9. Create Shop
   const shop = await prisma.shop.create({
     data: {
       userId: adminUser.id,
@@ -122,7 +154,7 @@ async function main() {
     },
   });
 
-  // 9. License
+  // 10. License
   await prisma.license.create({
     data: {
       shopId: shop.id,
@@ -133,7 +165,7 @@ async function main() {
     },
   });
 
-  // 10. Product
+  // 11. Product
   const product = await prisma.product.create({
     data: {
       shopId: shop.id,
@@ -144,7 +176,7 @@ async function main() {
     },
   });
 
-  // 11. Product Image
+  // 12. Product Image
   await prisma.productImage.create({
     data: {
       productId: product.id,
@@ -154,7 +186,7 @@ async function main() {
     },
   });
 
-  // 12. Initial Rating
+  // 13. Product Rating
   await prisma.rating.create({
     data: {
       value: 5,

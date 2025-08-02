@@ -8,220 +8,207 @@ datasource db {
 }
 
 model Role {
-  id          Int              @id @default(autoincrement())
+  id          String           @id @default(uuid()) @db.Uuid
   name        String           @unique
   description String?
-  users       User[]
   permissions RolePermission[]
+  users       User[]
 }
 
 model Permission {
-  id          Int              @id @default(autoincrement())
+  id          String           @id @default(uuid()) @db.Uuid
   name        String           @unique
   description String?
   roles       RolePermission[]
 }
 
 model RolePermission {
-  roleId       Int
-  permissionId Int
-  role         Role       @relation(fields: [roleId], references: [id])
+  roleId       String   @db.Uuid
+  permissionId String   @db.Uuid
   permission   Permission @relation(fields: [permissionId], references: [id])
+  role         Role       @relation(fields: [roleId], references: [id])
 
   @@id([roleId, permissionId])
 }
 
 model User {
-  id         Int       @id @default(autoincrement())
-  name       String?
-  email      String?   @unique
-  phone      String?   @unique
-  password   String
-  roleId     Int
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id             String         @id @default(uuid()) @db.Uuid
+  name           String?
+  email          String?        @unique
+  phone          String?        @unique
+  password       String
+  roleId         String         @db.Uuid
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  messages       Message[]
+  orders         Order[]
+  ratings        Rating[]
+  shops          Shop[]
+  shopRequests   ShopRequest[]
+  refreshTokens  RefreshToken[]
 
-  role       Role      @relation(fields: [roleId], references: [id])
-  shops      Shop[]
-  ratings    Rating[]
-  orders     Order[]
-  messages   Message[]
+  role           Role           @relation(fields: [roleId], references: [id])
 }
 
 model Shop {
-  id             Int       @id @default(autoincrement())
-  userId         Int
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @db.Uuid
   name           String
   description    String?
   phone          String?
   whatsappNumber String?
   address        String?
-  locationId     Int
+  locationId     String       @db.Uuid
   googleMapsUrl  String?
   bannerUrl      String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  owner      User       @relation(fields: [userId], references: [id])
-  location   Location   @relation(fields: [locationId], references: [id])
-  license    License?
-  products   Product[]
-  ratings    Rating[]
-  promotions Promotion[]
-  views      View[]
-  payments   Payment[]
-  messages   Message[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  license        License?
+  messages       Message[]
+  payments       Payment[]
+  products       Product[]
+  promotions     Promotion[]
+  ratings        Rating[]
+  location       Location     @relation(fields: [locationId], references: [id])
+  owner          User         @relation(fields: [userId], references: [id])
+  views          View[]
 }
 
 model License {
-  id            Int      @id @default(autoincrement())
-  shopId        Int      @unique
+  id            String   @id @default(uuid()) @db.Uuid
+  shopId        String   @unique @db.Uuid
   licenseNumber String
   issuedDate    DateTime
   expiryDate    DateTime
-  status        String   // 'active', 'expired'
-
+  status        String
   shop          Shop     @relation(fields: [shopId], references: [id])
 }
 
 model Location {
-  id        Int      @id @default(autoincrement())
+  id        String  @id @default(uuid()) @db.Uuid
   city      String
   region    String
   latitude  Float
   longitude Float
-
   shops     Shop[]
 }
 
 model Category {
-  id       Int       @id @default(autoincrement())
+  id       String    @id @default(uuid()) @db.Uuid
   name     String    @unique
   products Product[]
 }
 
 model Product {
-  id          Int       @id @default(autoincrement())
-  shopId      Int
-  categoryId  Int
+  id          String         @id @default(uuid()) @db.Uuid
+  shopId      String         @db.Uuid
+  categoryId  String         @db.Uuid
   title       String
   description String?
   price       Float
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  shop        Shop      @relation(fields: [shopId], references: [id])
-  category    Category  @relation(fields: [categoryId], references: [id])
-  images      ProductImage[]
-  ratings     Rating[]
-  promotions  Promotion[]
-  views       View[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
   orders      OrderItem[]
+  category    Category       @relation(fields: [categoryId], references: [id])
+  shop        Shop           @relation(fields: [shopId], references: [id])
+  images      ProductImage[]
+  promotions  Promotion[]
+  ratings     Rating[]
+  views       View[]
 }
 
 model ProductImage {
-  id         Int      @id @default(autoincrement())
-  productId  Int
+  id         String   @id @default(uuid()) @db.Uuid
+  productId  String   @db.Uuid
   imageUrl   String
   isPrimary  Boolean  @default(false)
   position   Int
   uploadedAt DateTime @default(now())
-
   product    Product  @relation(fields: [productId], references: [id])
 }
 
 model Rating {
-  id        Int       @id @default(autoincrement())
-  value     Int       // 1–5 stars
+  id        String   @id @default(uuid()) @db.Uuid
+  value     Int
   review    String?
-  userId    Int
-  productId Int?
-  shopId    Int?
-  createdAt DateTime  @default(now())
-
-  user      User      @relation(fields: [userId], references: [id])
-  product   Product?  @relation(fields: [productId], references: [id])
-  shop      Shop?     @relation(fields: [shopId], references: [id])
+  userId    String   @db.Uuid
+  productId String?  @db.Uuid
+  shopId    String?  @db.Uuid
+  createdAt DateTime @default(now())
+  product   Product? @relation(fields: [productId], references: [id])
+  shop      Shop?    @relation(fields: [shopId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, productId])
   @@unique([userId, shopId])
 }
 
 model Promotion {
-  id          Int       @id @default(autoincrement())
-  shopId      Int
-  productId   Int?
-  promoType   String    // 'featured_product', 'shop_spotlight'
-  startDate   DateTime
-  endDate     DateTime
-  price       Float
-  createdAt   DateTime  @default(now())
-
-  shop        Shop      @relation(fields: [shopId], references: [id])
-  product     Product?  @relation(fields: [productId], references: [id])
+  id        String   @id @default(uuid()) @db.Uuid
+  shopId    String   @db.Uuid
+  productId String?  @db.Uuid
+  promoType String
+  startDate DateTime
+  endDate   DateTime
+  price     Float
+  createdAt DateTime @default(now())
+  product   Product? @relation(fields: [productId], references: [id])
+  shop      Shop     @relation(fields: [shopId], references: [id])
 }
 
 model View {
-  id         Int      @id @default(autoincrement())
-  entityType String   // 'shop', 'product'
-  shopId     Int?
-  productId  Int?
+  id         String   @id @default(uuid()) @db.Uuid
+  entityType String
+  shopId     String?  @db.Uuid
+  productId  String?  @db.Uuid
   viewedAt   DateTime @default(now())
   ipAddress  String
-
-  shop       Shop?    @relation(fields: [shopId], references: [id])
   product    Product? @relation(fields: [productId], references: [id])
+  shop       Shop?    @relation(fields: [shopId], references: [id])
 }
 
 model Payment {
-  id             Int      @id @default(autoincrement())
-  shopId         Int
-  amount         Float
-  currency       String   // 'ETB', 'USD'
-  paymentMethod  String   // 'Chapa', 'PayPal', etc.
-  transactionId  String
-  status         String   // 'pending', 'completed', 'failed'
-  paidAt         DateTime
-
-  shop           Shop     @relation(fields: [shopId], references: [id])
+  id            String   @id @default(uuid()) @db.Uuid
+  shopId        String   @db.Uuid
+  amount        Float
+  currency      String
+  paymentMethod String
+  transactionId String
+  status        String
+  paidAt        DateTime
+  shop          Shop     @relation(fields: [shopId], references: [id])
 }
 
 model Order {
-  id        Int         @id @default(autoincrement())
-  userId    Int
+  id        String      @id @default(uuid()) @db.Uuid
+  userId    String      @db.Uuid
   total     Float
   createdAt DateTime    @default(now())
-
   user      User        @relation(fields: [userId], references: [id])
   items     OrderItem[]
 }
 
 model OrderItem {
-  id        Int      @id @default(autoincrement())
-  orderId   Int
-  productId Int
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @db.Uuid
+  productId String   @db.Uuid
   quantity  Int
-
-  order     Order    @relation(fields: [orderId], references: [id])
-  product   Product  @relation(fields: [productId], references: [id])
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
 }
 
 model Message {
-  id         Int      @id @default(autoincrement())
-  userId     Int
-  shopId     Int
-  content    String
-  sentAt     DateTime @default(now())
-
-  user       User     @relation(fields: [userId], references: [id])
-  shop       Shop     @relation(fields: [shopId], references: [id])
+  id      String   @id @default(uuid()) @db.Uuid
+  userId  String   @db.Uuid
+  shopId  String   @db.Uuid
+  content String
+  sentAt  DateTime @default(now())
+  shop    Shop     @relation(fields: [shopId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
 }
 
-//
-// ✅ NEW MODEL: For OTP phone verification
-//
 model OtpCode {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(uuid()) @db.Uuid
   phone     String
   code      String
   expiresAt DateTime
@@ -229,4 +216,27 @@ model OtpCode {
   createdAt DateTime @default(now())
 
   @@index([phone])
+}
+
+model ShopRequest {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  name        String
+  description String?
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid()) @db.Uuid
+  token      String   @unique
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  expiresAt  DateTime
+
+  @@index([userId])
 }

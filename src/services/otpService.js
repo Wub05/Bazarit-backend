@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
 
+//Max of 3 Opt's per hour
 export const generateOtp = async (phone) => {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 

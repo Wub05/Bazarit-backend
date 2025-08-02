@@ -10,10 +10,8 @@ export const signup = async (req, res) => {
     const { name, phone, password, otp } = req.body;
 
     // Basic validation
-    if (!phone || !password) {
-      return res
-        .status(400)
-        .json({ error: "Phone and password are required." });
+    if (!name || !phone || !password) {
+      return res.status(400).json({ error: "All fields are required." });
     }
 
     // Check if user already exists
@@ -22,29 +20,27 @@ export const signup = async (req, res) => {
       return res.status(409).json({ error: "Phone already registered." });
     }
 
-    if (!otp) {
-      // No OTP provided — generate and send OTP first
-      try {
+    // No OTP provided — generate and send OTP first
+    try {
+      if (!otp) {
         await generateOtp(phone);
-        res.status(200).json({
+        return res.status(200).json({
           message:
             "OTP sent to your phone. Please verify to complete registration.",
         });
-
-        // OTP provided — verify it
-        const isOtpValid = await verifyOtp(phone, otp);
-        if (!isOtpValid) {
-          return res
-            .status(401)
-            .json({ error: "Invalid or expired OTP. Please try again." });
-        }
-      } catch (error) {
-        return res.status(429).json({ error: error.message });
       }
+      // OTP provided — verify it
+      const isOtpValid = await verifyOtp(phone, otp);
+      if (!isOtpValid) {
+        return res
+          .status(401)
+          .json({ error: "Invalid or expired OTP. Please try again." });
+      }
+    } catch (error) {
+      return res.status(429).json({ error: error.message });
     }
 
     // OTP is valid — create user
-
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Get buyer role
@@ -55,6 +51,7 @@ export const signup = async (req, res) => {
       return res.status(500).json({ error: "Buyer role not found." });
     }
 
+    //create user
     const user = await prisma.user.create({
       data: {
         name,
@@ -78,14 +75,17 @@ export const signup = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
+    //for now we don't want "OTP" for login (MVP)
     const { phone, password, otp } = req.body;
 
+    //basic validation
     if (!phone || !password) {
       return res
         .status(400)
         .json({ error: "Phone and password are required." });
     }
 
+    //check if the user exists
     const user = await prisma.user.findUnique({ where: { phone } });
 
     if (!user) {
@@ -100,33 +100,38 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: "Invalid phone or password." });
     }
 
-    if (!otp) {
-      // No OTP: generate and send it
-      try {
-        await generateOtp(phone);
-        return res.status(200).json({
-          message: "OTP sent to your phone. Please verify to complete login.",
-        });
-      } catch (error) {
-        return res.status(429).json({ error: error.message });
-      }
-    }
+    //💥OTP generation not for MVP
+    // if (!otp) {
+    //   // No OTP: generate and send it
+    //   try {
+    //     await generateOtp(phone);
+    //     return res.status(200).json({
+    //       message: "OTP sent to your phone. Please verify to complete login.",
+    //     });
+    //   } catch (error) {
+    //     return res.status(429).json({ error: error.message });
+    //   }
+    // }
 
     // OTP is provided: verify it
-    const isOtpValid = await verifyOtp(phone, otp);
-    if (!isOtpValid) {
-      return res
-        .status(401)
-        .json({ error: "Invalid or expired OTP. Please try again." });
-    }
+
+    // const isOtpValid = await verifyOtp(phone, otp);
+    // if (!isOtpValid) {
+    //   return res
+    //     .status(401)
+    //     .json({ error: "Invalid or expired OTP. Please try again." });
+    // }
 
     // OTP verified —> generate tokens
+
     const accessToken = jwt.sign(
+      //access token
       { id: user.id, phone: user.phone, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "1d" } // access token expires in 1 day
     );
 
+    //refreshToken
     const refreshToken = jwt.sign(
       { id: user.id, phone: user.phone, role: user.role },
       process.env.JWT_REFRESH_SECRET,
@@ -157,39 +162,42 @@ export const login = async (req, res) => {
   }
 };
 
-//refresh Token
-export const refreshAccessToken = async (req, res) => {
+//Refresh Token Controller
+
+export const refreshToken = (req, res) => {
+  const refreshToken = req.cookies?.refreshToken;
+
+  if (!refreshToken) {
+    return res.status(401).json({ error: "No refresh token provided" });
+  }
+
   try {
-    const refreshToken = req.cookies?.refreshToken;
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const { id, phone, role } = decoded;
 
-    if (!refreshToken) {
-      return res.status(401).json({ error: "Refresh token missing." });
-    }
+    const newAccessToken = jwt.sign(
+      { id, phone, role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "15m" }
+    );
 
-    // Verify refresh token
-    jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, decoded) => {
-      if (err) {
-        return res
-          .status(403)
-          .json({ error: "Invalid or expired refresh token." });
-      }
-
-      const { id, phone, role } = decoded;
-
-      // Generate new access token
-      const newAccessToken = jwt.sign(
-        { id, phone, role },
-        process.env.JWT_SECRET,
-        { expiresIn: "1h" } // Short-lived token (e.g. 1 hour)
-      );
-
-      return res.status(200).json({
-        message: "Access token refreshed successfully.",
-        accessToken: newAccessToken,
-      });
+    return res.status(200).json({
+      message: "Access token refreshed successfully.",
+      accessToken: newAccessToken,
     });
   } catch (err) {
     console.error("Refresh token error:", err);
-    return res.status(500).json({ error: "Server error refreshing token." });
+    return res.status(403).json({ error: "Invalid or expired refresh token" });
   }
+};
+
+// Logout controller
+export const logout = (req, res) => {
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", // true in production
+    sameSite: "Strict", // CSRF protection
+  });
+
+  return res.status(200).json({ message: "Logged out successfully." });
 };
