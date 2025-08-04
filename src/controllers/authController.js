@@ -4,7 +4,7 @@ import { generateOtp, verifyOtp } from "../services/otpService";
 import jwt from "jsonwebtoken";
 const prisma = new PrismaClient();
 
-//Create a user!
+//Create a user! || User Registeration
 export const signup = async (req, res) => {
   try {
     const { name, phone, password, otp } = req.body;
@@ -192,12 +192,35 @@ export const refreshToken = (req, res) => {
 };
 
 // Logout controller
-export const logout = (req, res) => {
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production", // true in production
-    sameSite: "Strict", // CSRF protection
-  });
 
-  return res.status(200).json({ message: "Logged out successfully." });
+import prisma from "../prisma/client.js";
+
+// Logout Controller
+export const logout = async (req, res) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(204).json({ message: "No refresh token to logout." });
+    }
+
+    // Delete the refresh token from DB
+    await prisma.refreshToken.deleteMany({
+      where: {
+        token: refreshToken,
+      },
+    });
+
+    // Clear the cookie
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict",
+    });
+
+    return res.status(200).json({ message: "Logged out successfully." });
+  } catch (error) {
+    console.error("Logout error:", error);
+    return res.status(500).json({ message: "Server error during logout." });
+  }
 };
