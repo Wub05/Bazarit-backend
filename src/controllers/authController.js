@@ -191,10 +191,6 @@ export const refreshToken = (req, res) => {
   }
 };
 
-// Logout controller
-
-import prisma from "../prisma/client.js";
-
 // Logout Controller
 export const logout = async (req, res) => {
   try {
