@@ -11,6 +11,9 @@ import ratingRoutes from "./routes/ratingRoutes.js";
 import permissionRoute from "./routes/permissionRoute.js";
 import roleRoute from "./routes/roleRoute.js";
 import rolePermissionRoute from "./routes/rolePermissionRoute.js";
+import locationRoutes from "./routes/locationRoutes.js";
+import discoveryRoutes from "./routes/discoveryRoutes.js";
+import viewRoutes from "./routes/viewRoutes.js";
 import otpRoutes from "./routes/otpRoutes.js";
 import errorHandler from "./middlewares/error.middleware.js";
 
@@ -41,13 +44,22 @@ app.use("/api/category", categoryRoutes);
 app.use("/api/rating", ratingRoutes);
 
 //permission routes
-app.use("/api/permissionRoute", permissionRoute);
+app.use("/api/permission", permissionRoute);
 
 //role routes
 app.use("/api/role", roleRoute);
 
 //rolePermission route
 app.use("/api/rolePermission", rolePermissionRoute);
+
+//location route
+app.use("/api/location", locationRoutes);
+
+//discovery route
+app.use("/api/discovery", discoveryRoutes);
+
+//view route
+app.use("/api/views", viewRoutes);
 
 //OTP routes
 app.use("/api/getOtp", otpRoutes);
