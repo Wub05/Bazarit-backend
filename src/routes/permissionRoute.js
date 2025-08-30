@@ -12,9 +12,9 @@ import { authorize } from "../middlewares/roleMiddleware.js";
 const router = express.Router();
 
 router.post("/", verifyToken, authorize(["Admin"]), createPermission);
-router.get("/", getPermissions);
-router.get("/:id", getPermissionById);
-router.put("/:id", updatePermission);
-router.delete("/:id", deletePermission);
+router.get("/", verifyToken, getPermissions);
+router.get("/:id", verifyToken, getPermissionById);
+router.put("/:id", verifyToken, authorize(["Admin"]), updatePermission);
+router.delete("/:id", verifyToken, authorize(["Admin"]), deletePermission);
 
 export default router;

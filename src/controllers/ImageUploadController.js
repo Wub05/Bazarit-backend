@@ -27,11 +27,11 @@ export const uploadProductImage = async (req, res) => {
       });
     }
 
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > 3 * 1024 * 1024) {
       // 2MB
       return res
         .status(400)
-        .json({ error: "Image too large. Max size is 2MB." });
+        .json({ error: "Image too large. Max size is 3MB." });
     }
 
     // 2. Upload to Zergaw
